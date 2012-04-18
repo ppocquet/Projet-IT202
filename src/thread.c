@@ -28,6 +28,9 @@ void basic_sig_treatment(int sig){
 GList * ready_list=NULL;
 GList * zombie_list=NULL;
 
+/*list for stopped thread*/
+GList * stopped_list = NULL;
+
 struct thread {
     ucontext_t uc;
     GList * sleeping_list;
@@ -202,10 +205,31 @@ void thread_kill(thread_t thr, int sig){
     int* new_sig;
     if(thr==NULL)
 	return;
-  
-    new_sig=malloc(sizeof(int));
-    *new_sig=sig;
-    thr->sig_list=g_list_append(thr->sig_list, new_sig);  
+
+    if(sig>=0){
+      new_sig=malloc(sizeof(int));
+      *new_sig=sig;
+      thr->sig_list=g_list_append(thr->sig_list, new_sig);  
+    }
+    else{
+      switch(sig){
+      case SIG_STOP:
+	if(g_list_index(ready_list, thr)!=-1){
+	  stopped_list = g_list_append(stopped_list, thr);
+	  ready_list = g_list_remove(ready_list, thr);
+	}
+	break;
+      case SIG_WAKE:
+	if(g_list_index(stopped_list, thr)!=-1){
+	  ready_list = g_list_append(ready_list, thr);
+	  stopped_list = g_list_remove(stopped_list, thr);
+	}
+	break;
+      default:
+	printf("signal ordonnanceur %d recu\n", sig);
+      }
+    }
+
 }
 
 void thread_signal(thread_t thr, int sig, void (*sig_func)(int)){
