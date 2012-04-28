@@ -4,6 +4,7 @@
 #include <ucontext.h>
 #include <valgrind/valgrind.h>
 #include <sys/time.h>
+#include <signal.h>
 //to remove
 #include<stdio.h>
 
@@ -48,6 +49,14 @@ thread_t thread_self(void) {
     return (thread_t)g_list_nth_data(ready_list, 0);
 }
 
+void sigvtalarm_treatment(int i){
+    (void)i;
+    printf("pock");
+    thread_t current = g_list_nth_data(ready_list, 0);
+    thread_kill(current,SIG_STOP);
+    thread_sigTreat(current);
+}
+
 int thread_create(thread_t *newthread, void *(*func)(void *), void *funcarg) {
     if (ready_list == NULL){
     	thread_t main_thread;
@@ -56,13 +65,17 @@ int thread_create(thread_t *newthread, void *(*func)(void *), void *funcarg) {
     	//getcontext(&main_thread->uc);
     	ready_list = g_list_append(ready_list, main_thread);
 
+	struct sigaction act;
+	act.sa_handler = sigvtalarm_treatment;
+
+	sigaction(SIGVTALRM,&act,NULL);
+
 	struct itimerval new_value;
 
 	new_value.it_interval.tv_sec = 0;
 	new_value.it_interval.tv_usec = TIMESLICE;
 
 	new_value.it_value = new_value.it_interval;
-
 
 	setitimer(ITIMER_VIRTUAL,
 		  &new_value,
