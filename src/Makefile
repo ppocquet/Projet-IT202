@@ -26,15 +26,14 @@ default : example
 
 clean :
 	@echo $(BOLD)"Nettoyage..."$(NORMAL)
-	@rm -vf $(OBJ) *~ *.d | sed 's|^|\t|g'
+	@rm -vf $(OBJ) $(DEP) *~ | sed 's|^|\t|g'
 	@rm -f .tmp
 
 
 clean-all :
 	@echo $(BOLD)"Nettoyage..."$(NORMAL)
-	@rm -vf $(OBJ) *~ *.d | sed 's|^|\t|g'
+	@rm -vf $(OBJ) *~ $(DEP) $(TARGET) | sed 's|^|\t|g'
 	@rm -f .tmp
-	@rm -f $(TARGET)
 
 all : $(TARGET)
 

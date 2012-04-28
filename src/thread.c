@@ -130,9 +130,10 @@ int thread_join(thread_t thread, void **retval) {
 
 	if (g_list_index(zombie_list, thread) != -1){
 	    zombie_list = g_list_remove(zombie_list,thread);
-	    free(thread->uc.uc_stack.ss_sp);
 	    /* juste avant de libérer la pile */
 	    VALGRIND_STACK_DEREGISTER(thread->stackid);
+	    free(thread->uc.uc_stack.ss_sp);
+
 
 	    free(thread);
 
@@ -228,7 +229,7 @@ void thread_initSigTab(thread_t thr){
 }
 
 void thread_sigTreat(thread_t thr){
-    #if 0
+
     while(g_list_length(thr->sig_list)>0){
 	int* sig = g_list_nth_data(thr->sig_list, 0);
     
@@ -239,5 +240,5 @@ void thread_sigTreat(thread_t thr){
 	thr->sig_list=g_list_remove(thr->sig_list, sig);
 	free(sig);
     }
-    #endif
+
 }
