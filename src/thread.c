@@ -27,7 +27,7 @@ struct thread {
 /**
  * une insertion triée à partir de la fin de la liste ready sur current_prio  et 
  * lors de l'insertion on augmente(--)le current_prio des threads qu'on a dépassé.
- *
+ * /!\ l'insertion de doit pas dépasser le 1er élement qui est le thread courant.
  */
 int prio_update_sorted_insert_by_end(thread_t thread) {
     if(thread == NULL)
@@ -36,10 +36,11 @@ int prio_update_sorted_insert_by_end(thread_t thread) {
     if(g_list_length(ready_list) == 0) {
 	ready_list = g_list_append(ready_list, thread);
 	ready_list_end = ready_list;
+	return 0;
     }
     
     GList *current = ready_list_end;
-    while(current != NULL) {
+    while(current != ready_list) {
 	thread_t current_thread = current->data;
 	if(thread->current_prio < current_thread->current_prio) {
 	    current_thread->current_prio--;
@@ -48,18 +49,11 @@ int prio_update_sorted_insert_by_end(thread_t thread) {
 	else {
 	    // ajout à la fin de la liste
 	    if(current == ready_list_end) {
-		// 1 seul thread dans la liste 
-		if(current == ready_list) {
-		    ready_list = g_list_append(ready_list, thread);
-		    ready_list_end = g_list_next(ready_list);
-		} 
-		else {
-		    GList *end_prev = g_list_previous(ready_list_end);
-		    ready_list_end = g_list_append(ready_list_end, thread);
+		GList *end_prev = g_list_previous(ready_list_end);
+		ready_list_end = g_list_append(ready_list_end, thread);
 		    
 		    end_prev->next = ready_list_end;
 		    ready_list_end = ready_list_end->next;
-		}
 	    }
 	    else {
 		GList *next = g_list_next(current);
@@ -68,10 +62,17 @@ int prio_update_sorted_insert_by_end(thread_t thread) {
 	    break;
 	}
     }
-    //ajout à la tete de la liste
-    if(current == NULL) {
-	ready_list = g_list_prepend(ready_list, thread);
+    
+    if(current == ready_list) {
+	//le thread courant est le seul dans la liste
+	if(ready_list->next == NULL) {
+	    ready_list = g_list_append(ready_list, thread);
+	    ready_list_end = g_list_next(ready_list);
+	}
+	else 
+	    ready_list = g_list_insert_before(ready_list, g_list_next(ready_list), thread);
     }
+
     return 0;
 }
 
@@ -134,10 +135,10 @@ int thread_yield(void) {
     thread_t next, current = g_list_nth_data(ready_list, 0);
     //reinitialisation de la prio
     current->current_prio = current->basic_prio;
-
-    ready_list = g_list_remove(ready_list, current);
-    //ready_list = g_list_append(ready_list, current);
+    
     prio_update_sorted_insert_by_end(current);
+    ready_list = g_list_remove(ready_list, current);
+    
     next = g_list_nth_data(ready_list, 0);
     return swapcontext(&current->uc, &next->uc);
 }
@@ -148,11 +149,15 @@ int thread_join(thread_t thread, void **retval) {
     unsigned int i;
     for(i = 0; i < g_list_length(ready_list); i++) {
 	thread_t t = g_list_nth_data(ready_list, i);
-	if(thread == t)
+	if(thread == t) {
 	    found = 1;
+	    break;
+	}
 	else {
-	    if(g_list_find(t->sleeping_list, thread) != NULL)
+	    if(g_list_find(t->sleeping_list, thread) != NULL) {
 		found = 1;
+		break;
+	    }
 	}
     }
 
@@ -215,7 +220,6 @@ int thread_join(thread_t thread, void **retval) {
 static void wakeup_func(thread_t data, gpointer user_data) {
     if(data != NULL) {
 	data->retval = user_data;
-	//ready_list = g_list_append(ready_list, data);
 	prio_update_sorted_insert_by_end(data);
     }
 }
@@ -224,11 +228,7 @@ static void wakeup_func(thread_t data, gpointer user_data) {
 void thread_exit(void *retval) {
 
     thread_t head = g_list_nth_data(ready_list, 0);
-    GList *it;
-    /* for(it = head->sleeping_list; it!=NULL; it=g_list_next(it)) { */
-    /* 	fprintf(stderr, "it %p %d\n",it, g_list_length(head->sleeping_list)); */
-    /* 	wakeup_func(it->data, retval); */
-    /* } */
+    
     g_list_foreach(head->sleeping_list,
     		   (GFunc)wakeup_func,
     		   retval);

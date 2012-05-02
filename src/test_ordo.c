@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
   printf("le main lance 2 threads...\n");
   err = thread_create_with_prio(&thread1, threadfunc, "thread1",0);
   assert(!err);
-  err = thread_create_with_prio(&thread2, threadfunc, "thread2",5);
+  err = thread_create_with_prio(&thread2, threadfunc, "thread2",-5);
   assert(!err);
   printf("le main a lancé les threads %p et %p\n",
 	 thread1, thread2);
