@@ -29,9 +29,16 @@ struct thread {
  * lors de l'insertion on augmente(--)le current_prio des threads qu'on a dépassé.
  *
  */
-void prio_update_sorted_insert_by_end(thread_t thread) {
-    GList *end = ready_list_end;
-    GList *current = end;
+int prio_update_sorted_insert_by_end(thread_t thread) {
+    if(thread == NULL)
+	return -1;
+    
+    if(g_list_length(ready_list) == 0) {
+	ready_list = g_list_append(ready_list, thread);
+	ready_list_end = ready_list;
+    }
+    
+    GList *current = ready_list_end;
     while(current != NULL) {
 	thread_t current_thread = current->data;
 	if(thread->current_prio < current_thread->current_prio) {
@@ -39,22 +46,33 @@ void prio_update_sorted_insert_by_end(thread_t thread) {
 	    current = g_list_previous(current);
 	}
 	else {
-	    if(current == end) {
-		//cas tete à faire
-
-		end = g_list_append(end, thread);
-		ready_list_end = end->next;
+	    // ajout à la fin de la liste
+	    if(current == ready_list_end) {
+		// 1 seul thread dans la liste 
+		if(current == ready_list) {
+		    ready_list = g_list_append(ready_list, thread);
+		    ready_list_end = g_list_next(ready_list);
+		} 
+		else {
+		    GList *end_prev = g_list_previous(ready_list_end);
+		    ready_list_end = g_list_append(ready_list_end, thread);
+		    
+		    end_prev->next = ready_list_end;
+		    ready_list_end = ready_list_end->next;
+		}
 	    }
 	    else {
 		GList *next = g_list_next(current);
-		next = g_list_prepend(next, thread);
-		current->next = next;
+		ready_list = g_list_insert_before(ready_list, next, thread);
 	    }
 	    break;
 	}
     }
-    if(current == NULL)
+    //ajout à la tete de la liste
+    if(current == NULL) {
 	ready_list = g_list_prepend(ready_list, thread);
+    }
+    return 0;
 }
 
 
@@ -69,7 +87,7 @@ int thread_create_with_prio(thread_t *newthread, void *(*func)(void *), void *fu
     	main_thread=malloc(sizeof(struct thread));
 	main_thread->sleeping_list=NULL;
     	//getcontext(&main_thread->uc);
-    	ready_list = g_list_append(ready_list, main_thread);
+	ready_list = g_list_append(ready_list, main_thread);
 	ready_list_end = ready_list; 
     }
 
@@ -114,6 +132,8 @@ int thread_create(thread_t *newthread, void *(*func)(void *), void *funcarg) {
 
 int thread_yield(void) {
     thread_t next, current = g_list_nth_data(ready_list, 0);
+    //reinitialisation de la prio
+    current->current_prio = current->basic_prio;
 
     ready_list = g_list_remove(ready_list, current);
     //ready_list = g_list_append(ready_list, current);
@@ -163,8 +183,6 @@ int thread_join(thread_t thread, void **retval) {
 
 	thread_t cur_t =  g_list_nth_data(ready_list, 0);
 	if(g_list_length(ready_list)==1 && g_list_length(cur_t->sleeping_list)==0){
-	    //	    fprintf(stderr, "Total Annihilation\n");
-
 	    g_list_free(cur_t->sleeping_list);
 
 	    free(cur_t);
@@ -206,17 +224,21 @@ static void wakeup_func(thread_t data, gpointer user_data) {
 void thread_exit(void *retval) {
 
     thread_t head = g_list_nth_data(ready_list, 0);
-
+    GList *it;
+    /* for(it = head->sleeping_list; it!=NULL; it=g_list_next(it)) { */
+    /* 	fprintf(stderr, "it %p %d\n",it, g_list_length(head->sleeping_list)); */
+    /* 	wakeup_func(it->data, retval); */
+    /* } */
     g_list_foreach(head->sleeping_list,
-		   (GFunc)wakeup_func,
-		   retval);
+    		   (GFunc)wakeup_func,
+    		   retval);
 
     g_list_free(head->sleeping_list);
 
     head->retval=retval;
-    zombie_list = g_list_append(zombie_list, head);
+    
     ready_list = g_list_remove(ready_list, head);
-
+    zombie_list = g_list_append(zombie_list, head);
     setcontext(&(((thread_t)g_list_nth_data(ready_list, 0))->uc));
 
     exit(0);

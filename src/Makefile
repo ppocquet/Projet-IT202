@@ -10,7 +10,7 @@ SRC=$(wildcard $(patsubst %/,%/*.c,$(subst :, ,$(VPATH))))
 DEP=$(patsubst %.c, %.d, $(SRC))
 OBJ=$(patsubst %.c, %.o, $(SRC))
 
-TARGET=example fibonacci sum_table
+TARGET=example fibonacci sum_table test_ordo
 
 BOLD="\033[01m"
 NORMAL="\033[0m"
@@ -43,6 +43,8 @@ fibonacci : thread.o fibonacci.o
 sum_table : thread.o sum_table.o
 
 example : example.o thread.o
+
+test_ordo : test_ordo.o thread.o
 
 % : %.o
 	@echo -n $(BOLD)"$(CC) -o $@ $^ $(LDFLAGS) : "$(NORMAL)
