@@ -19,6 +19,8 @@ extern thread_t thread_self(void);
  */
 extern int thread_create(thread_t *newthread, void *(*func)(void *), void *funcarg);
 
+int thread_create_with_prio(thread_t *newthread, void *(*func)(void *), void *funcarg, int prio);
+
 /* passer la main à un autre thread.
  */
 extern int thread_yield(void);
