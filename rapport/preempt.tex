@@ -1,0 +1,25 @@
+\section{Préemption}
+Nous avons mis en place un préemption pseudo-coopérative, cachée dans
+certaines fonctions de notre bibliothèque, de telle sorte que, au bout
+d'une certaine durée prédéfinie, le thread en cours d'exécution reçoit
+un signal \verb$SIGVTALRM$ et laisse la main au thread suivant dans la
+liste "ready".
+
+Cette forme de préemption est basée sur l'utilisation d'un timer, par
+l'intermédiaire des fonctions \verb$setitimer$ et
+\verb$getitimer$. Nous utilisons un timer virtuel, qui décroit
+uniquement lorsque le processus s'exécute, et émet un signal
+\verb$SIGVTALRM$ à l'expiration du délai.  La durée du timer est
+définie par la variable globale \verb$TIMESLICE$.
+
+Le timer est créé lors de la création du premier thread du programme,
+et est désactivé lors de la disparition de ce même thread. Il est
+réinitialisé dans \verb$thread_yield$, \verb$thread_join$ et
+\verb$thread_exit$, pour que le thread qui reprend la main ait à son
+tour le temps d'exécution disponible correspondant à la valeur de
+\verb$TIMESLICE$. 
+
+Dans notre version, nous avons donné à la variable \verb$TIMESLICE$
+une valeur fixée, mais nous pourrions aller plus loin en lui donner
+une valeur variable en fonction de la priorité du thread qui doit
+s'exécuter.
