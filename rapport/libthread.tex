@@ -112,7 +112,7 @@ Un thread est libéré lorsqu'il est dans la liste "zombie", soit :
 \begin{itemize}
 \item Lors d'un join d'un autre thread sur ce thread.
 \item Lors de la reprise d'un thread qui l'attendait.
-
+\end{itemize}
 
 Comme nos listes sont fournies par la glib, il est nécessaire
 d'utiliser la commande suivante pour utiliser valgrind :
