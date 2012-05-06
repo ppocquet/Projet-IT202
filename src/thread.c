@@ -18,6 +18,15 @@ GList * zombie_list = NULL;
 
 #define TIMESLICE 10
 
+/**
+ * Par defaut on a un ordonnancement FIFO
+ */
+#define ADD_THREAD append 
+
+#if ORDO_PRIO==1
+    #define ADD_THREAD prio_update_sorted_insert_by_end
+#endif
+
 typedef void(*treat_func)(int);
 
 //initial treatment signal function
@@ -79,9 +88,9 @@ int prio_update_sorted_insert_by_end(thread_t thread) {
 	    if(current == ready_list_end) {
 		GList *end_prev = g_list_previous(ready_list_end);
 		ready_list_end = g_list_append(ready_list_end, thread);
-		    
-		    end_prev->next = ready_list_end;
-		    ready_list_end = ready_list_end->next;
+		
+		end_prev->next = ready_list_end;
+		ready_list_end = ready_list_end->next;
 	    }
 	    else {
 		GList *next = g_list_next(current);
@@ -104,7 +113,27 @@ int prio_update_sorted_insert_by_end(thread_t thread) {
     return 0;
 }
 
-
+/**
+ * Cette ajoute un thread_t à la fin de la liste ready_list 
+ * sans parcourir toute la liste.
+ * Uililisé pour la politique d'ordonnancement FIFO
+ */
+int append(thread_t thread) {
+    if(ready_list == ready_list_end || ready_list == NULL ) {
+	ready_list = g_list_append(ready_list, thread);
+	ready_list_end = g_list_next(ready_list);
+	//ready_list etait NULL -> maintenant un seul elt dans la liste
+	if(ready_list_end == NULL)
+	    ready_list_end = ready_list;
+    }
+    else {
+	GList *end_prev = g_list_previous(ready_list_end);
+	ready_list_end = g_list_append(ready_list_end, thread);
+	
+	end_prev->next = ready_list_end;
+	ready_list_end = ready_list_end->next;
+    }
+}
 
 thread_t thread_self(void) {
     return (thread_t)g_list_nth_data(ready_list, 0);
@@ -179,8 +208,7 @@ int thread_create_with_prio(thread_t *newthread, void *(*func)(void *), void *fu
     makecontext(&(*newthread)->uc, (void (*)(void)) func, 1, funcarg);
     //return -1;
 
-    //ready_list = g_list_append(ready_list, *newthread);
-    prio_update_sorted_insert_by_end(*newthread);
+    ADD_THREAD(*newthread);
     thread_initSigTab(*newthread);
 
     return 0;
@@ -197,7 +225,7 @@ int thread_yield(void) {
     //reinitialisation de la prio
     current->current_prio = current->basic_prio;
     
-    prio_update_sorted_insert_by_end(current);
+    ADD_THREAD(current);
 
     ready_list = g_list_remove(ready_list, current);
     
@@ -327,7 +355,7 @@ int thread_join(thread_t thread, void **retval) {
 static void wakeup_func(thread_t data, gpointer user_data) {
     if(data != NULL) {
 	data->retval = user_data;
-	prio_update_sorted_insert_by_end(data);
+	ADD_THREAD(data);
     }
 }
 
