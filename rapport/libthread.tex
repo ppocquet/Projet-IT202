@@ -57,8 +57,9 @@ la GLib, nous fournissant les fonctions nécessaires à la manipulation
 des listes de threads tout en nous assurant qu'il n'y aura aucune
 fuite mémoire.
 
-Cependant, une autre conséquence de ce choix est l'impossibilité
-d'accéder au dernier élément de la liste en temps constant.
+Cependant, la Glist ne permet pas d'accéder au dernier élément d'une
+liste en temps constant. Pour palier à ce problème, un pointer sur le
+dernier élément de la liste "ready" est utilisé.
 
 \section {L'implémentation des fonctions}
 
