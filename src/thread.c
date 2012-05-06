@@ -290,6 +290,15 @@ int thread_join(thread_t thread, void **retval) {
 
 	    free(cur_t);
 
+
+	    new_value.it_interval.tv_sec = 0;
+	    new_value.it_interval.tv_usec = 0;
+
+	    setitimer(ITIMER_VIRTUAL,
+		      &new_value,
+		      NULL);
+
+
 	    g_list_free(ready_list);
 	    ready_list=NULL;
 	}
