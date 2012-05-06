@@ -57,6 +57,9 @@ la GLib, nous fournissant les fonctions nécessaires à la manipulation
 des listes de threads tout en nous assurant qu'il n'y aura aucune
 fuite mémoire.
 
+Cependant, une autre conséquence de ce choix est l'impossibilité
+d'accéder au dernier élément de la liste en temps constant.
+
 \section {L'implémentation des fonctions}
 
 \begin{verbatim}
@@ -101,3 +104,20 @@ void thread_exit(void *retval);
 Cette fonction réveille tous les threads de sa liste des dormants et
 met à jour son champ retval avec la valeur en paramètre. Puis elle se
 met dans la liste "zombie" et passe la main au suivant.
+
+\section{libération de la mémoire}
+On suppose qu'un thread est attendu par au moins un autre thread.
+
+Un thread est libéré lorsqu'il est dans la liste "zombie", soit :
+\begin{itemize}
+\item Lors d'un join d'un autre thread sur ce thread.
+\item Lors de la reprise d'un thread qui l'attendait.
+
+
+Comme nos listes sont fournies par la glib, il est nécessaire
+d'utiliser la commande suivante pour utiliser valgrind :
+\begin{verbatim}
+G_SLICE=always-malloc valgrind --leak-check=full --show-reachable=yes ./example 
+\end{verbatim}
+Sans cette commande, il considère certaines pertes mémoire possibles
+alors qu'elles n'ont pas lieu d'être.
