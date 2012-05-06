@@ -1,0 +1,47 @@
+\section{Ordonnancement des threads}
+Deux politiques d'ordonnancement a été implémentées.  La première est
+du type FIFO et la deuxième utilise la priorité des threads.
+
+L'ordonnancement du type FIFO ajoute simplement les nouveaux threads
+ou ceux qui ont laissé la main à la fin de la liste "ready".  Tandis
+que pour l'ordonnancement avec les priorités, la liste "ready" est
+maintenu triée selon son champ \verb'current_prio'. Le thread se
+trouvant en deuxième position de la liste est donc le prochain qui va
+prendre la main (le premier étant le thread courant).
+
+Le maintient de la liste "ready" triée se fait par des insertions
+triée partant de la fin. Afin d'éviter la possibilité qu'un thread non
+prioritaire n'a jamais la main, lors du parcours de la liste "ready"
+pendant les insertions, la priorité des threads dépassés est
+augmentée. Ce qui résulte en un désincrémentation du champ
+\verb'current_prio'. Ce champ est remit à la valeur de la priorité de
+départ du thread (\verb'basic_prio') une fois que ce dernier rend la
+main.
+ 
+Par défault, la politique FIFO est utilisée, pour avoir la politique
+des priorités il faut compiler avec l'option \verb'-DORDO_PRIO'.
+
+Un programme de teste a été réalisé. Ce dernier consiste à créer trois
+threads de priorité -5, 0 et 5 et attend qu'ils finissent. Chaque
+thread fait une boucle de dix tours,qui à chaque tour, affiche son
+identifiant et le nombre tours passés et rend la main . Les résultats
+obtenus peut être visualisés sur les figures \ref{fifo} et \ref{prio}.
+
+\begin{figure}[h]
+  \begin{minipage}[c]{.45\linewidth}
+    \begin{center}
+      \includegraphics[width=8cm]{fifo.png}
+      \caption{Ordonnancement FIFO}
+      \label{fifo}
+    \end{center}
+  \end{minipage}
+  \hfill
+  \begin{minipage}[c]{.45\linewidth}
+    \begin{center}
+      \includegraphics[width=8cm]{prio.png}
+      \caption{Ordonnancement priorité}
+      \label{prio}
+    \end{center}
+  \end{minipage}
+\end{figure}
+

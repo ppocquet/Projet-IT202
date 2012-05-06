@@ -118,7 +118,7 @@ int prio_update_sorted_insert_by_end(thread_t thread) {
  * sans parcourir toute la liste.
  * Uililisé pour la politique d'ordonnancement FIFO
  */
-int append(thread_t thread) {
+void append(thread_t thread) {
     if(ready_list == ready_list_end || ready_list == NULL ) {
 	ready_list = g_list_append(ready_list, thread);
 	ready_list_end = g_list_next(ready_list);
