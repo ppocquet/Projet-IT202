@@ -10,6 +10,8 @@ struct thread {
     void *retval;
     struct GList * sleeping_list;
 
+    int basic_prio;
+    int current_prio;
     treat_func treat_tab[NB_SIG];
     GList* sig_list;
 
@@ -17,13 +19,27 @@ struct thread {
     int stackid;
 }
 \end{verbatim}
-% à mettre à jour
+
 Le champ \verb'uc' sert à conserver le contexte d'exécution du thread,
 \verb'retval' quant à lui permet de stocker la valeur de retour d'un
-thread quand celui-ci est dans la liste "zombie". Mais quand il
-est dans la liste "ready", \verb'retval' peut contenir la valeur de retour du
-thread qu'il attendait. Le dernier champ est la liste des
-threads dormants dans l'attente de la fin de l'exécution de ce thread.
+thread quand celui-ci est dans la liste "zombie". Mais quand il est
+dans la liste "ready", \verb'retval' peut contenir la valeur de retour
+du thread qu'il attendait. Le troisième champ est la liste des threads
+dormants dans l'attente de la fin de l'exécution de ce thread. 
+
+Les champs \verb$basic_prio$ et \verb$current_prio$ servent à gérer la
+priorité des threads.  \verb$basic_prio$ est la priorité que l'on
+souhaite donner au thread; \verb$current_prio$ sert à ranger les
+threads dans la liste "ready" selon leur priorité. Elle a au départ la
+même valeur que \verb$basic_prio$, mais sa valeur peut diminuer (donc
+sa priorité augmente), afin d'éviter qu'un thread de priorité faible
+n'attende trop longtemps.
+
+Le tableau \verb$treat_tab$ contient les fonctions de traitement
+correspondant à chaque type de signal, la liste \verb$sig_list$ est la
+liste de ces signaux.
+
+Le champ \verb$stackid$ sert à aider valgrind à trouver la pile du thread. 
 
 \section {Les threads dans l'état "ready" et "zombie"}
 
