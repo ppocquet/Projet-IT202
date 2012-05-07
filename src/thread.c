@@ -5,7 +5,7 @@
 #include <valgrind/valgrind.h>
 #include <sys/time.h>
 #include <signal.h>
-#include<stdio.h>
+#include <stdio.h>
 
 
 GList * ready_list = NULL;
@@ -21,7 +21,7 @@ GList * zombie_list = NULL;
 /**
  * Par defaut on a un ordonnancement FIFO
  */
-#define ADD_THREAD append 
+#define ADD_THREAD append
 
 #if ORDO_PRIO==1
     #define ADD_THREAD prio_update_sorted_insert_by_end
@@ -62,20 +62,20 @@ struct thread {
 };
 
 /**
- * une insertion triée à partir de la fin de la liste ready sur current_prio  et 
+ * une insertion triée à partir de la fin de la liste ready sur current_prio  et
  * lors de l'insertion on augmente(--)le current_prio des threads qu'on a dépassé.
  * /!\ l'insertion de doit pas dépasser le 1er élement qui est le thread courant.
  */
 int prio_update_sorted_insert_by_end(thread_t thread) {
     if(thread == NULL)
 	return -1;
-    
+
     if(g_list_length(ready_list) == 0) {
 	ready_list = g_list_append(ready_list, thread);
 	ready_list_end = ready_list;
 	return 0;
     }
-    
+
     GList *current = ready_list_end;
     while(current != ready_list) {
 	thread_t current_thread = current->data;
@@ -88,7 +88,7 @@ int prio_update_sorted_insert_by_end(thread_t thread) {
 	    if(current == ready_list_end) {
 		GList *end_prev = g_list_previous(ready_list_end);
 		ready_list_end = g_list_append(ready_list_end, thread);
-		
+
 		end_prev->next = ready_list_end;
 		ready_list_end = ready_list_end->next;
 	    }
@@ -99,14 +99,14 @@ int prio_update_sorted_insert_by_end(thread_t thread) {
 	    break;
 	}
     }
-    
+
     if(current == ready_list) {
 	//le thread courant est le seul dans la liste
 	if(ready_list->next == NULL) {
 	    ready_list = g_list_append(ready_list, thread);
 	    ready_list_end = g_list_next(ready_list);
 	}
-	else 
+	else
 	    ready_list = g_list_insert_before(ready_list, g_list_next(ready_list), thread);
     }
 
@@ -114,7 +114,7 @@ int prio_update_sorted_insert_by_end(thread_t thread) {
 }
 
 /**
- * Cette ajoute un thread_t à la fin de la liste ready_list 
+ * Cette ajoute un thread_t à la fin de la liste ready_list
  * sans parcourir toute la liste.
  * Uililisé pour la politique d'ordonnancement FIFO
  */
@@ -129,7 +129,7 @@ void append(thread_t thread) {
     else {
 	GList *end_prev = g_list_previous(ready_list_end);
 	ready_list_end = g_list_append(ready_list_end, thread);
-	
+
 	end_prev->next = ready_list_end;
 	ready_list_end = ready_list_end->next;
     }
@@ -142,6 +142,7 @@ thread_t thread_self(void) {
 
 void sigvtalarm_treatment(int i){
     (void)i;
+    printf("pock\n");
     thread_t current = g_list_nth_data(ready_list, 0);
     thread_kill(current,SIG_STOP);
     thread_sigTreat(current);
@@ -156,10 +157,13 @@ int thread_create_with_prio(thread_t *newthread, void *(*func)(void *), void *fu
 	main_thread->sleeping_list=NULL;
     	//getcontext(&main_thread->uc);
 	ready_list = g_list_append(ready_list, main_thread);
-	ready_list_end = ready_list; 
+	ready_list_end = ready_list;
 
 	struct sigaction act;
+
 	act.sa_handler = sigvtalarm_treatment;
+	sigemptyset (&act.sa_mask);
+	act.sa_flags = 0;
 
 	sigaction(SIGVTALRM,&act,NULL);
 
@@ -196,7 +200,7 @@ int thread_create_with_prio(thread_t *newthread, void *(*func)(void *), void *fu
 	pr = prio;
     (*newthread)->basic_prio = pr;
     (*newthread)->current_prio = pr;
-    
+
     /* juste après l'allocation de la pile */
     (*newthread)->stackid =
 	VALGRIND_STACK_REGISTER((*newthread)->uc.uc_stack.ss_sp,
@@ -224,11 +228,11 @@ int thread_yield(void) {
 
     //reinitialisation de la prio
     current->current_prio = current->basic_prio;
-    
+
     ADD_THREAD(current);
 
     ready_list = g_list_remove(ready_list, current);
-    
+
     next = g_list_nth_data(ready_list, 0);
 
     struct itimerval new_value;
@@ -363,7 +367,7 @@ static void wakeup_func(thread_t data, gpointer user_data) {
 void thread_exit(void *retval) {
 
     thread_t head = g_list_nth_data(ready_list, 0);
-    
+
     g_list_foreach(head->sleeping_list,
     		   (GFunc)wakeup_func,
     		   retval);
@@ -371,7 +375,7 @@ void thread_exit(void *retval) {
     g_list_free(head->sleeping_list);
 
     head->retval=retval;
-    
+
     ready_list = g_list_remove(ready_list, head);
     zombie_list = g_list_append(zombie_list, head);
 
