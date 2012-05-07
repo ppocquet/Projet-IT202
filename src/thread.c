@@ -404,11 +404,6 @@ void thread_kill(thread_t thr, int sig){
     if(thr==NULL)
 	return;
 
-<<<<<<< HEAD
-    new_sig=malloc(sizeof(int));
-    *new_sig=sig;
-    thr->sig_list=g_list_append(thr->sig_list, new_sig);
-=======
     if(sig>=0){
       new_sig=malloc(sizeof(int));
       *new_sig=sig;
@@ -432,8 +427,6 @@ void thread_kill(thread_t thr, int sig){
 	printf("signal ordonnanceur %d recu\n", sig);
       }
     }
-
->>>>>>> sig_ordo
 }
 
 void thread_signal(thread_t thr, int sig, void (*sig_func)(int)){
