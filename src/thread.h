@@ -39,8 +39,10 @@ extern void thread_exit(void *retval)__attribute__ ((__noreturn__));
 
 //SIGNALS DEFINE
 #define NB_SIG 6
+#define SIG_WAKE -2
+#define SIG_STOP -1
 #define SIG_KILL 0
-#define SIG_STOP 1
+#define SIG_YIELD 1
 #define SIG_USR1 2
 #define SIG_USR2 3
 #define SIG_USR3 4

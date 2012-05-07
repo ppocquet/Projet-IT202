@@ -42,6 +42,8 @@ sum_table : thread.o sum_table.o
 
 test_signal : thread.o test_signal.o
 
+test_stop : thread.o test_stop.o
+
 example : example.o thread.o
 
 test_ordo : test_ordo.o thread.o
