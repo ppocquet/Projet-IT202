@@ -142,7 +142,6 @@ thread_t thread_self(void) {
 
 void sigvtalarm_treatment(int i){
     (void)i;
-    printf("pock\n");
     thread_t current = g_list_nth_data(ready_list, 0);
     thread_kill(current,SIG_STOP);
     thread_sigTreat(current);
