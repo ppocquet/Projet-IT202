@@ -2,7 +2,7 @@
 
 CC=gcc
 CFLAGS = -W -Wall -g `pkg-config --cflags glib-2.0`
-LDFLAGS = `pkg-config --libs glib-2.0`
+LDFLAGS = `pkg-config --libs glib-2.0` -lpthread
 
 
 VPATH=./:application_parallele/

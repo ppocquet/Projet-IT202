@@ -81,12 +81,9 @@ main(int argc, char **argv) {
 
     char *param = strdup(argv[2]);
 
-    long old = 0;
     while((funccall_retval == NULL || *funccall_retval != PTHREAD_CANCELED)) {
-	long new;
-	int lequel = RUSAGE_SELF;
-	struct rusage statistiques;
-
+	long t;
+	
 	setitimer(ITIMER_VIRTUAL,
 		  &new_value,
 		  NULL);
@@ -94,35 +91,46 @@ main(int argc, char **argv) {
 	pthread_attr_t attr;
 	pthread_attr_init(&attr);
 
+	unsigned long s;
+	unsigned long us;
+    
+	struct timeval tv1;
+	struct timeval tv2;
+	gettimeofday(&tv1, NULL);
+	
+	
+    
+		printf("%lus %luus\n ",s, us);
+
 	pthread_create(&current,
 		       &attr,
 		       funccall,
 		       param);
 
 	pthread_join(current, funccall_retval);
+	gettimeofday(&tv2, NULL);
 
 	pthread_attr_destroy(&attr);
 
-	getrusage (lequel, &statistiques);
+	s=tv2.tv_sec - tv1.tv_sec;
+	us=tv2.tv_usec - tv1.tv_usec;
 
-	new = (statistiques.ru_stime.tv_sec * 1000000 +
-	       statistiques.ru_stime.tv_usec) +
-	    (statistiques.ru_utime.tv_sec * 1000000 +
-	     statistiques.ru_utime.tv_usec);
-
+	t = s*1000000 + us;
+	
 	new_value.it_value.tv_sec = 0;
 	new_value.it_value.tv_usec = 0;
+	
 
 	fprintf(output,
-		"%ld ",
-		new - old);
-
-	old = new;
+		"%d\t%ld\n",
+		input, t);
+	fflush(output);
+	
 	input ++;
 
     }
 
     free(param);
-
+    fclose(output);
     return EXIT_SUCCESS;
 }
