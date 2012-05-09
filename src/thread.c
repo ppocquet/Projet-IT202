@@ -28,28 +28,12 @@ GList * zombie_list = NULL;
 #endif
 
 
+void basic_sig_treatment(int sig);
+void sigvtalarm_treatment(int i);
 void sig_block();
 void sig_unblock();
 
 typedef void(*treat_func)(int);
-
-//initial treatment signal function
-void basic_sig_treatment(int sig){
-    if(sig<0 || sig>NB_SIG)
-	return;
-
-    switch(sig){
-    case SIG_KILL :
-	thread_exit(NULL);
-	break;
-    case SIG_YIELD :
-	thread_yield();
-	break;
-    default:
-	printf("signal %d recu\n", sig);
-    }
-}
-
 
 /*list for stopped thread*/
 GList * stopped_list = NULL;
@@ -146,23 +130,6 @@ thread_t thread_self(void) {
     return (thread_t)g_list_nth_data(ready_list, 0);
 }
 
-
-void sigvtalarm_treatment(int i){
-    sig_block();
-    (void)i;
-    thread_t current = g_list_nth_data(ready_list, 0);
-    
-    struct itimerval new_value;
-	
-    getitimer(ITIMER_VIRTUAL,
-	      &new_value);
-    thread_kill(current,SIG_YIELD);
-    sig_unblock();
-    thread_sigTreat(current);
-    //thread_yield();
-
-    
-}
 
 
 int thread_create_with_prio(thread_t *newthread, void *(*func)(void *), void *funcarg, int prio) {
@@ -479,6 +446,38 @@ void thread_sigTreat(thread_t thr){
 	free(sig);
     }
     sig_unblock();
+}
+
+
+
+
+//initial treatment signal function
+void basic_sig_treatment(int sig){
+    if(sig<0 || sig>NB_SIG)
+	return;
+
+    switch(sig){
+    case SIG_KILL :
+	thread_exit(NULL);
+	break;
+    case SIG_YIELD :
+	thread_yield();
+	break;
+    default:
+	printf("signal %d recu\n", sig);
+    }
+}
+
+
+void sigvtalarm_treatment(int i){
+    //sig_block();
+    (void)i;
+    thread_t current = g_list_nth_data(ready_list, 0);
+    
+    // marche pas 
+    //thread_kill(current,SIG_YIELD);
+    //sig_unblock();
+    //thread_sigTreat(current);
 }
 
 void sig_block() {
