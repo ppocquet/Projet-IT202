@@ -38,6 +38,8 @@ all : $(TARGET)
 
 fibonacci : thread.o fibonacci.o
 
+test_preempt : test_preempt.o thread.o
+
 sum_table : thread.o sum_table.o
 
 test_signal : thread.o test_signal.o
