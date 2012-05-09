@@ -39,11 +39,14 @@
       ~~~\parbox{0.95\textwidth}{\small \textit{Résumé~:} \sffamily Le
         projet qui nous a été proposé consiste en l'implémentation
         d'un ordonnanceur de threads. Nous étions tenus dans un
-        premier temps d'exécuter un programme exemple manipulant
-        certaines primitives du module et de tester ces primitives sur
-        des programmes utilisant plusieurs threads, comme
-        Fibonacci. Dans un second temps, nous devions choisir
-        plusieurs objectifs avancés à implémenter.}
+        premier temps d'implémenter des fonctions de base assurant 
+        le bon fonctionnement d'un code exemple qui nous était fourni.
+		
+		Nous avons par la suite ajouté des fonctionnalités
+		supplémentaires telles qu'une gestion de priorité, de signaux 
+		ou bien une préemption forçant un thread de laisser la main
+		si il l'a depuis trop longtemps.         
+        }
 
       \vskip 1mm ~
 
@@ -53,6 +56,7 @@
 ~~\\
 ~~\\
 
+\input{intro.tex}
 \input{libthread.tex}
 \input{ordo.tex}
 \input{preempt.tex}
