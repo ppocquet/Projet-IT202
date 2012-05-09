@@ -1,7 +1,7 @@
 \section{Communication à l'aide de signaux}
 	Afin de permettre aux threads d'interagir entre eux, nous
         avons ajouté un système de signaux.  Ces signaux se
-        représentent sous la forme d'entiers positifs qui sont stockés
+        présentent sous la forme d'entiers positifs qui sont stockés
         dans une liste dans la structure du thread. Ils peuvent être
         envoyés grâce à la fonction $thread\_kill$ prenant un
         paramètre un $thread\_t$ représentant le thread auquel envoyer
@@ -32,17 +32,6 @@
         $SIG\_KILL$, on remarque dans l'exécution que le signal
         $SIG\_KILL$ est traité avant la sortie de la première boucle
         (absence de l'affichage "out of the loop").\\
-	
-	
-\begin{figure}[h]
-  \begin{minipage}[c]{.45\linewidth}
-    \begin{center}
-      \includegraphics[height=2cm]{test_signal.png}
-      \caption{Ex\'ecution de test signal}
-      \label{test signal}
-    \end{center}
-  \end{minipage}
-\end{figure}
 
 
 	Nous avons par la suite implémenté la possibilité aux threads
@@ -57,16 +46,24 @@
 	Cette fonctionnalité est testée par le programme $test\_stop$
         qui exécute deux threads parallèlement affichant les nombres
         de 1 à 10 et laissant la main entre chaque affichage. Une fois
-        la première moitié faite, le premier thread va envoyer à
+        la première moitié faite, le premier thread va demander à
         l'ordonnanceur de retirer le deuxième thread à l'aide du
         signal $SIG\_STOP$, représenté par la ligne "Attaque seau de
         colle!!" lors de l'exécution. On voit alors que le premier
-        thread finit de compter jusqu'à 10, une fois qu'il a fini de
-        compter, il envoie le signal $SIG\_WAKE$ pour réveiller le
-        deuxième thread. Or remarque que le deuxième thread finit
-        alors de compter.\\
+        thread finit de compter jusqu'à 10. Une fois qu'il a fini de
+        compter, il envoie le signal $SIG\_WAKE$ à l'ordonnanceur pour réveiller le
+        deuxième thread. On remarque alors que le deuxième thread
+        termine de compter.\\
 
 \begin{figure}[h]
+  \begin{minipage}[c]{.45\linewidth}
+    \begin{center}
+      \includegraphics[]{test_signal.png}
+      \caption{Ex\'ecution de test signal}
+      \label{test signal}
+    \end{center}
+  \end{minipage}
+  \hfil
   \begin{minipage}[c]{.45\linewidth}
     \begin{center}
       \includegraphics[]{test_stop.png}
