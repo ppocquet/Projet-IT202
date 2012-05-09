@@ -6,8 +6,10 @@
 #include <sys/resource.h>
 #include <sys/time.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
+
 
 
 #define TIMESLICE 30
@@ -23,18 +25,29 @@ sigvtalarm_treatment(int i) {
 
 void *
 funccall(void *p) {
+
+    pid_t id = fork();
     char *param = (char *)p;
 
     char *argv[3];
-    argv[2] = NULL;
-    argv[1] = malloc(15 * sizeof *argv[0]);
-    sprintf(argv[1],"%d",input);
-    argv[0] = strdup(param);
 
-    if(execv(param,
-	     argv)==-1){
-	perror(NULL);
-	exit(0);
+    switch (id) {
+    case 0:
+	argv[2] = NULL;
+	argv[1] = malloc(15 * sizeof *argv[0]);
+	sprintf(argv[1],"%d",input);
+	argv[0] = strdup(param);
+
+	if(execv(param,
+		 argv)==-1){
+	    perror(NULL);
+	    exit(0);
+	}
+	break;
+    case -1:
+	exit(1);
+    default:
+	waitpid(id,NULL,0);
     }
 
     return NULL;
@@ -105,8 +118,6 @@ main(int argc, char **argv) {
 		new - old);
 
 	old = new;
-
-	printf("%d\n",input);
 	input ++;
 
     }

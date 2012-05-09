@@ -4,6 +4,7 @@ CC=gcc
 CFLAGS = -W -Wall -g `pkg-config --cflags glib-2.0`
 LDFLAGS = `pkg-config --libs glib-2.0`
 
+
 VPATH=./:application_parallele/
 SRC=$(wildcard $(patsubst %/,%/*.c,$(subst :, ,$(VPATH))))
 DEP=$(patsubst %.c, %.d, $(SRC))
@@ -39,6 +40,10 @@ all : $(TARGET)
 fibonacci : thread.o fibonacci.o
 
 test_preempt : test_preempt.o thread.o
+
+test_lib : test_lib.o
+	@echo -n $(BOLD)"$(CC) -o $@ $^ $(LDFLAGS) : "$(NORMAL)
+	@($(CC) -o $@ $^ -lpthread 2> .tmp && $(OK) && $(ERROR)) || ($(FAILED) && $(ERROR) && false)
 
 sum_table : thread.o sum_table.o
 
