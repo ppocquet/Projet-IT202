@@ -1,7 +1,7 @@
 .PHONY : default clean clean-all
 
 CC=gcc
-CFLAGS = -W -Wall -g `pkg-config --cflags glib-2.0`
+CFLAGS = -DORDO_PRIO -W -Wall -g `pkg-config --cflags glib-2.0`
 LDFLAGS = `pkg-config --libs glib-2.0` -lpthread
 
 
