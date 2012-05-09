@@ -4,18 +4,19 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-static void * threadfunc(void * arg)
+static void *threadfunc(void * arg)
 {
     int i;
     for(i=0;i<100000;i++){
     }
+    thread_exit(arg);
 }
 
 void print_date(int i){
     (void) i;
-    struct timeval *tv;
-    gettimeofday(tv,NULL);
-    printf("%d sec %d ms\n", tv->tv_sec, tv->tv_usec);
+    struct timeval tv;
+    gettimeofday(&tv,NULL);
+    printf("%d sec %d ms\n", tv.tv_sec, tv.tv_usec);
 }
 
 int main(int argc, char *argv[])
@@ -25,10 +26,10 @@ int main(int argc, char *argv[])
     int err;
 
     printf("le main lance 2 threads...\n");
-    err = thread_create(&thread1, threadfunc, "thread1");
+    err = thread_create(&thread1, (void * (*) (void *)threadfunc, "thread1");
     thread_signal(thread1,SIG_STOP,print_date);
     assert(!err);
-    err = thread_create(&thread2, threadfunc, "thread2");
+    err = thread_create(&thread2, (void * (*) (void *)threadfunc, "thread2");
     thread_signal(thread2,SIG_STOP,print_date);
     assert(!err);
     printf("le main a lancé les threads %p et %p\n",
