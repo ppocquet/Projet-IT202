@@ -38,7 +38,7 @@ void basic_sig_treatment(int sig){
     case SIG_KILL :
 	thread_exit(NULL);
 	break;
-    case SIG_STOP :
+    case SIG_YIELD :
 	thread_yield();
 	break;
     default:
@@ -144,15 +144,31 @@ thread_t thread_self(void) {
 
 
 void sigvtalarm_treatment(int i){
+    sig_block();
     (void)i;
     thread_t current = g_list_nth_data(ready_list, 0);
-    thread_kill(current,SIG_STOP);
+    
+        struct itimerval new_value;
+
+    getitimer(ITIMER_VIRTUAL,
+	      &new_value);
+    fprintf(stderr,"%d %d\n",new_value.it_interval.tv_usec, new_value.it_value.tv_usec);
+
+    fprintf(stderr,"current %p  1%p  e%p\n", current, ready_list->data, ready_list_end->data);////
+    thread_kill(current,SIG_YIELD);
+    fprintf(stderr,"2current %p  1%p  e%p\n", current, ready_list->data, ready_list_end->data);////
+    sig_unblock();
     thread_sigTreat(current);
+    fprintf(stderr,"3current %p  1%p  e%p\n", current, ready_list->data, ready_list_end->data);////
+    //thread_yield();
+
+    
 }
 
 
 int thread_create_with_prio(thread_t *newthread, void *(*func)(void *), void *funcarg, int prio) {
 
+    sig_block();
     if (ready_list == NULL){
     	thread_t main_thread;
     	main_thread=malloc(sizeof(struct thread));
@@ -173,7 +189,7 @@ int thread_create_with_prio(thread_t *newthread, void *(*func)(void *), void *fu
 
 	new_value.it_interval.tv_sec = 0;
 	new_value.it_interval.tv_usec = TIMESLICE;
-
+	fprintf(stderr,"%d\n",new_value.it_interval.tv_usec);
 	new_value.it_value = new_value.it_interval;
 
 	setitimer(ITIMER_VIRTUAL,
@@ -216,7 +232,8 @@ int thread_create_with_prio(thread_t *newthread, void *(*func)(void *), void *fu
 
     ADD_THREAD(*newthread);
     thread_initSigTab(*newthread);
-
+    sig_unblock();
+    fprintf(stderr,"dsfd\n");
     return 0;
 }
 
@@ -231,25 +248,25 @@ int thread_yield(void) {
     //reinitialisation de la prio
     current->current_prio = current->basic_prio;
 
-    ADD_THREAD(current);
-
     ready_list = g_list_remove(ready_list, current);
 
-    next = g_list_nth_data(ready_list, 0);
+    ADD_THREAD(current);
 
+    next = g_list_nth_data(ready_list, 0);
+    fprintf(stderr,"next%p\n",next);
     struct itimerval new_value;
 
     getitimer(ITIMER_VIRTUAL,
 	      &new_value);
-
+    
     if (new_value.it_value.tv_usec) {
 	new_value.it_value = new_value.it_interval;
-
+	
 	setitimer(ITIMER_VIRTUAL,
 		  &new_value,
 		  NULL);
     }
-
+    
     ok=swapcontext(&current->uc, &next->uc);
 
     if(!ok)
@@ -367,7 +384,7 @@ static void wakeup_func(thread_t data, gpointer user_data) {
 
 
 void thread_exit(void *retval) {
-
+    
     thread_t head = g_list_nth_data(ready_list, 0);
 
     g_list_foreach(head->sleeping_list,
@@ -382,18 +399,22 @@ void thread_exit(void *retval) {
     zombie_list = g_list_append(zombie_list, head);
 
     struct itimerval new_value;
-
-    getitimer(ITIMER_VIRTUAL,
-	      &new_value);
-
+    new_value.it_interval.tv_sec = 0;
+	new_value.it_interval.tv_usec = TIMESLICE;
+	fprintf(stderr,"%d\n",new_value.it_interval.tv_usec);
+	new_value.it_value = new_value.it_interval;
+	
+	//getitimer(ITIMER_VIRTUAL,
+	//    &new_value);
+	
     if (new_value.it_value.tv_usec) {
 	new_value.it_value = new_value.it_interval;
-
+	
 	setitimer(ITIMER_VIRTUAL,
 		  &new_value,
 		  NULL);
     }
-
+        
     setcontext(&(((thread_t)g_list_nth_data(ready_list, 0))->uc));
 
     exit(0);
@@ -403,7 +424,7 @@ void thread_kill(thread_t thr, int sig){
     int* new_sig;
     if(thr==NULL)
 	return;
-
+    
     if(sig>=0){
       new_sig=malloc(sizeof(int));
       *new_sig=sig;
@@ -419,7 +440,7 @@ void thread_kill(thread_t thr, int sig){
 	break;
       case SIG_WAKE:
 	if(g_list_index(stopped_list, thr)!=-1){
-	  ready_list = g_list_append(ready_list, thr);
+	  ADD_THREAD(thr);
 	  stopped_list = g_list_remove(stopped_list, thr);
 	}
 	break;
@@ -427,6 +448,7 @@ void thread_kill(thread_t thr, int sig){
 	printf("signal ordonnanceur %d recu\n", sig);
       }
     }
+    
 }
 
 void thread_signal(thread_t thr, int sig, void (*sig_func)(int)){
@@ -449,14 +471,31 @@ void thread_initSigTab(thread_t thr){
 }
 
 void thread_sigTreat(thread_t thr){
+    if(thr==NULL)
+	return;
+    
     while(g_list_length(thr->sig_list)>0){
 	int* sig = g_list_nth_data(thr->sig_list, 0);
-
+	
 	if(*sig>=0 && *sig<NB_SIG){
 	    (*(thr->treat_tab[*sig])) (*sig);
 	}
-
+	
 	thr->sig_list=g_list_remove(thr->sig_list, sig);
 	free(sig);
     }
 }
+
+void sig_block() {
+    sigset_t set;
+    sigemptyset(&set);
+    sigaddset(&set, SIGVTALRM);
+    sigprocmask(SIG_BLOCK, &set, NULL);
+}
+void sig_unblock() {
+    sigset_t set;
+    sigemptyset(&set);
+    sigaddset(&set, SIGVTALRM);
+    sigprocmask(SIG_UNBLOCK, &set, NULL);
+}
+

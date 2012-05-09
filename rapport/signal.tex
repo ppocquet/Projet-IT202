@@ -30,8 +30,19 @@
         lorsqu'il reçoit le signal $SIG\_USR1$, la seconde ne faisant
         rien. Ce thread reçoit à la suite un signal $SIG\_USR1$ et
         $SIG\_KILL$, on remarque dans l'exécution que le signal
-        $SIG\_KILL$ est traité avant la sortie de la première
-        boucle.\\
+        $SIG\_KILL$ est traité avant la sortie de la première boucle
+        (absence de l'affichage "out of the loop").\\
+	
+	
+\begin{figure}[h]
+  \begin{minipage}[c]{.45\linewidth}
+    \begin{center}
+      \includegraphics[height=2cm]{test_signal.png}
+      \caption{Ex\'ecution de test signal}
+      \label{test signal}
+    \end{center}
+  \end{minipage}
+\end{figure}
 
 
 	Nous avons par la suite implémenté la possibilité aux threads
@@ -43,10 +54,24 @@
         état exécutable, et un autre pour le remettre dans la liste
         des threads exécutables.\\
 	
-	Cette fonctionnalité est testée par le programme
-        $test\_sig\_ordo$ qui exécute deux threads parallèles
-        affichant les nombres de 1 à 10 tout en laissant la main entre
-        chaque, mais l'un des threads va envoyer un signal à
-        l'ordonnanceur pour retirer l'autre va finir de compter et va
-        demander à l'ordonnanceur de remettre le thread dans la liste
-        des threads exécutables.\\
+	Cette fonctionnalité est testée par le programme $test\_stop$
+        qui exécute deux threads parallèlement affichant les nombres
+        de 1 à 10 et laissant la main entre chaque affichage. Une fois
+        la première moitié faite, le premier thread va envoyer à
+        l'ordonnanceur de retirer le deuxième thread à l'aide du
+        signal $SIG\_STOP$, représenté par la ligne "Attaque seau de
+        colle!!" lors de l'exécution. On voit alors que le premier
+        thread finit de compter jusqu'à 10, une fois qu'il a fini de
+        compter, il envoie le signal $SIG\_WAKE$ pour réveiller le
+        deuxième thread. Or remarque que le deuxième thread finit
+        alors de compter.\\
+
+\begin{figure}[h]
+  \begin{minipage}[c]{.45\linewidth}
+    \begin{center}
+      \includegraphics[]{test_stop.png}
+      \caption{Ex\'ecution de test stop}
+      \label{test stop}
+    \end{center}
+  \end{minipage}
+\end{figure}
