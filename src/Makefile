@@ -5,7 +5,7 @@ CFLAGS = -DORDO_PRIO -W -Wall -g `pkg-config --cflags glib-2.0`
 LDFLAGS = `pkg-config --libs glib-2.0` -lpthread
 
 
-VPATH=./:application_parallele/
+VPATH=./:application_parallele/:test/
 SRC=$(wildcard $(patsubst %/,%/*.c,$(subst :, ,$(VPATH))))
 DEP=$(patsubst %.c, %.d, $(SRC))
 OBJ=$(patsubst %.c, %.o, $(SRC))

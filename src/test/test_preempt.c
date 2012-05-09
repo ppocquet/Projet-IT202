@@ -1,4 +1,4 @@
-#include "thread.h"
+#include "../thread.h"
 #include <stdio.h>
 #include <assert.h>
 #include <sys/time.h>
