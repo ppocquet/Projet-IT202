@@ -231,9 +231,9 @@ int thread_yield(void) {
     //reinitialisation de la prio
     current->current_prio = current->basic_prio;
 
-    ADD_THREAD(current);
-
     ready_list = g_list_remove(ready_list, current);
+
+    ADD_THREAD(current);
 
     next = g_list_nth_data(ready_list, 0);
 
@@ -403,7 +403,7 @@ void thread_kill(thread_t thr, int sig){
     int* new_sig;
     if(thr==NULL)
 	return;
-
+    
     if(sig>=0){
       new_sig=malloc(sizeof(int));
       *new_sig=sig;
@@ -419,7 +419,7 @@ void thread_kill(thread_t thr, int sig){
 	break;
       case SIG_WAKE:
 	if(g_list_index(stopped_list, thr)!=-1){
-	  ready_list = g_list_append(ready_list, thr);
+	  ADD_THREAD(thr);
 	  stopped_list = g_list_remove(stopped_list, thr);
 	}
 	break;
@@ -427,6 +427,7 @@ void thread_kill(thread_t thr, int sig){
 	printf("signal ordonnanceur %d recu\n", sig);
       }
     }
+    
 }
 
 void thread_signal(thread_t thr, int sig, void (*sig_func)(int)){
@@ -449,14 +450,17 @@ void thread_initSigTab(thread_t thr){
 }
 
 void thread_sigTreat(thread_t thr){
-    while(g_list_length(thr->sig_list)>0){
-	int* sig = g_list_nth_data(thr->sig_list, 0);
+  if(thr==NULL)
+    return;
 
-	if(*sig>=0 && *sig<NB_SIG){
-	    (*(thr->treat_tab[*sig])) (*sig);
-	}
-
-	thr->sig_list=g_list_remove(thr->sig_list, sig);
-	free(sig);
+  while(g_list_length(thr->sig_list)>0){
+    int* sig = g_list_nth_data(thr->sig_list, 0);
+    
+    if(*sig>=0 && *sig<NB_SIG){
+      (*(thr->treat_tab[*sig])) (*sig);
     }
+    
+    thr->sig_list=g_list_remove(thr->sig_list, sig);
+    free(sig);
+  }
 }
