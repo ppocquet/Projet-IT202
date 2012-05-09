@@ -27,6 +27,10 @@ GList * zombie_list = NULL;
     #define ADD_THREAD prio_update_sorted_insert_by_end
 #endif
 
+
+void sig_block();
+void sig_unblock();
+
 typedef void(*treat_func)(int);
 
 //initial treatment signal function
@@ -148,18 +152,13 @@ void sigvtalarm_treatment(int i){
     (void)i;
     thread_t current = g_list_nth_data(ready_list, 0);
     
-        struct itimerval new_value;
-
+    struct itimerval new_value;
+	
     getitimer(ITIMER_VIRTUAL,
 	      &new_value);
-    fprintf(stderr,"%d %d\n",new_value.it_interval.tv_usec, new_value.it_value.tv_usec);
-
-    fprintf(stderr,"current %p  1%p  e%p\n", current, ready_list->data, ready_list_end->data);////
     thread_kill(current,SIG_YIELD);
-    fprintf(stderr,"2current %p  1%p  e%p\n", current, ready_list->data, ready_list_end->data);////
     sig_unblock();
     thread_sigTreat(current);
-    fprintf(stderr,"3current %p  1%p  e%p\n", current, ready_list->data, ready_list_end->data);////
     //thread_yield();
 
     
@@ -189,7 +188,6 @@ int thread_create_with_prio(thread_t *newthread, void *(*func)(void *), void *fu
 
 	new_value.it_interval.tv_sec = 0;
 	new_value.it_interval.tv_usec = TIMESLICE;
-	fprintf(stderr,"%d\n",new_value.it_interval.tv_usec);
 	new_value.it_value = new_value.it_interval;
 
 	setitimer(ITIMER_VIRTUAL,
@@ -233,7 +231,6 @@ int thread_create_with_prio(thread_t *newthread, void *(*func)(void *), void *fu
     ADD_THREAD(*newthread);
     thread_initSigTab(*newthread);
     sig_unblock();
-    fprintf(stderr,"dsfd\n");
     return 0;
 }
 
@@ -253,7 +250,7 @@ int thread_yield(void) {
     ADD_THREAD(current);
 
     next = g_list_nth_data(ready_list, 0);
-    fprintf(stderr,"next%p\n",next);
+    
     struct itimerval new_value;
 
     getitimer(ITIMER_VIRTUAL,
@@ -399,14 +396,10 @@ void thread_exit(void *retval) {
     zombie_list = g_list_append(zombie_list, head);
 
     struct itimerval new_value;
-    new_value.it_interval.tv_sec = 0;
-	new_value.it_interval.tv_usec = TIMESLICE;
-	fprintf(stderr,"%d\n",new_value.it_interval.tv_usec);
-	new_value.it_value = new_value.it_interval;
 	
-	//getitimer(ITIMER_VIRTUAL,
-	//    &new_value);
-	
+    getitimer(ITIMER_VIRTUAL,
+	      &new_value);
+    
     if (new_value.it_value.tv_usec) {
 	new_value.it_value = new_value.it_interval;
 	
@@ -471,6 +464,7 @@ void thread_initSigTab(thread_t thr){
 }
 
 void thread_sigTreat(thread_t thr){
+    sig_block();
     if(thr==NULL)
 	return;
     
@@ -484,6 +478,7 @@ void thread_sigTreat(thread_t thr){
 	thr->sig_list=g_list_remove(thr->sig_list, sig);
 	free(sig);
     }
+    sig_unblock();
 }
 
 void sig_block() {

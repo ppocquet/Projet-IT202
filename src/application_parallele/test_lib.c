@@ -6,8 +6,10 @@
 #include <sys/resource.h>
 #include <sys/time.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
+
 
 
 #define TIMESLICE 30
@@ -23,17 +25,29 @@ sigvtalarm_treatment(int i) {
 
 void *
 funccall(void *p) {
+
+    pid_t id = fork();
     char *param = (char *)p;
 
-    char *argv[2];
-    argv[1] = NULL;
-    argv[0] = malloc(15 * sizeof *argv[0]);
-    sprintf(argv[0],"%d",input);
+    char *argv[3];
 
-    if(execv(param,
-	     argv)==-1){
-	perror(NULL);
-	exit(0);
+    switch (id) {
+    case 0:
+	argv[2] = NULL;
+	argv[1] = malloc(15 * sizeof *argv[0]);
+	sprintf(argv[1],"%d",input);
+	argv[0] = strdup(param);
+
+	if(execv(param,
+		 argv)==-1){
+	    perror(NULL);
+	    exit(0);
+	}
+	break;
+    case -1:
+	exit(1);
+    default:
+	waitpid(id,NULL,0);
     }
 
     return NULL;
@@ -51,7 +65,10 @@ main(int argc, char **argv) {
     void **funccall_retval=NULL;
 
     struct sigaction act;
+
     act.sa_handler = sigvtalarm_treatment;
+    sigemptyset (&act.sa_mask);
+    act.sa_flags = 0;
 
     sigaction(SIGVTALRM,&act,NULL);
 
@@ -74,14 +91,17 @@ main(int argc, char **argv) {
 		  &new_value,
 		  NULL);
 
+	pthread_attr_t attr;
+	pthread_attr_init(&attr);
 
 	pthread_create(&current,
-		       NULL,
+		       &attr,
 		       funccall,
 		       param);
 
 	pthread_join(current, funccall_retval);
 
+	pthread_attr_destroy(&attr);
 
 	getrusage (lequel, &statistiques);
 
@@ -98,8 +118,6 @@ main(int argc, char **argv) {
 		new - old);
 
 	old = new;
-
-	printf("%d\n",input);
 	input ++;
 
     }
