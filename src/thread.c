@@ -149,20 +149,19 @@ int thread_create_with_prio(thread_t *newthread, void *(*func)(void *), void *fu
 	sigemptyset (&act.sa_mask);
 	act.sa_flags = 0;
 
-	sigaction(SIGVTALRM,&act,NULL);
+	sigaction(SIGPROF,&act,NULL);
 
 	struct itimerval new_value;
 
-	new_value.it_interval.tv_sec = 0;
-	new_value.it_interval.tv_usec = TIMESLICE;
-	new_value.it_value = new_value.it_interval;
-
-	setitimer(ITIMER_VIRTUAL,
-		  &new_value,
-		  NULL);
-
+	new_value.it_interval.tv_sec=0;
+	new_value.it_interval.tv_usec=0;
+	new_value.it_value.tv_usec=TIMESLICE;
+	new_value.it_value.tv_sec=0;
+	setitimer(ITIMER_PROF,
+		  &new_value, NULL);
+	
 	thread_initSigTab(main_thread);
-
+	fprintf(stderr,"init %d  %d\n",new_value.it_interval.tv_usec, new_value.it_value.tv_usec);
     }
 
     *newthread = malloc(sizeof(struct thread));
@@ -195,8 +194,9 @@ int thread_create_with_prio(thread_t *newthread, void *(*func)(void *), void *fu
     makecontext(&(*newthread)->uc, (void (*)(void)) func, 1, funcarg);
     //return -1;
 
-    ADD_THREAD(*newthread);
     thread_initSigTab(*newthread);
+    ADD_THREAD(*newthread);
+    
     sig_unblock();
     return 0;
 }
@@ -206,6 +206,7 @@ int thread_create(thread_t *newthread, void *(*func)(void *), void *funcarg) {
 }
 
 int thread_yield(void) {
+    sig_block();
     thread_t next, current = g_list_nth_data(ready_list, 0);
     int ok;
 
@@ -219,28 +220,25 @@ int thread_yield(void) {
     next = g_list_nth_data(ready_list, 0);
     
     struct itimerval new_value;
-
-    getitimer(ITIMER_VIRTUAL,
-	      &new_value);
+    new_value.it_interval.tv_usec=0;
+    new_value.it_interval.tv_sec=0;
+    new_value.it_value.tv_usec=TIMESLICE;
+    new_value.it_value.tv_sec=0;
+    setitimer(ITIMER_PROF,
+	      &new_value, NULL);
     
-    if (new_value.it_value.tv_usec) {
-	new_value.it_value = new_value.it_interval;
-	
-	setitimer(ITIMER_VIRTUAL,
-		  &new_value,
-		  NULL);
-    }
     
+    sig_unblock();
     ok=swapcontext(&current->uc, &next->uc);
-
-    if(!ok)
-      thread_sigTreat(current);
-
+    sig_block();
+    //if(!ok)
+    thread_sigTreat(thread_self());
+    sig_unblock();
     return ok;
 }
 
 int thread_join(thread_t thread, void **retval) {
-
+    sig_block();
     int found = 0;
     unsigned int i;
     for(i = 0; i < g_list_length(ready_list); i++) {
@@ -267,23 +265,19 @@ int thread_join(thread_t thread, void **retval) {
 
 	next = g_list_nth_data(ready_list, 0);
 
-	struct itimerval new_value;
+	struct itimerval new_value;	
+	new_value.it_interval.tv_sec=0;
+	new_value.it_interval.tv_usec=0;
+	new_value.it_value.tv_usec=TIMESLICE;
+	new_value.it_value.tv_sec=0;
+	setitimer(ITIMER_PROF,
+		  &new_value, NULL);
 
-	getitimer(ITIMER_VIRTUAL,
-	      &new_value);
-
-	if (new_value.it_value.tv_usec) {
-	    new_value.it_value = new_value.it_interval;
-
-	    setitimer(ITIMER_VIRTUAL,
-		      &new_value,
-		      NULL);
-	}
-
-
-	if(swapcontext(&current->uc, &next->uc) == -1)
+	sig_unblock();
+	if(swapcontext(&current->uc, &next->uc) == -1) {
 	    return -1;
-
+	}
+	sig_block();
 	*retval = current->retval;
 
 	thread_sigTreat(current);
@@ -309,7 +303,7 @@ int thread_join(thread_t thread, void **retval) {
 	    new_value.it_interval.tv_sec = 0;
 	    new_value.it_interval.tv_usec = 0;
 
-	    setitimer(ITIMER_VIRTUAL,
+	    setitimer(ITIMER_PROF,
 		      &new_value,
 		      NULL);
 
@@ -333,8 +327,10 @@ int thread_join(thread_t thread, void **retval) {
     else {
 	*retval = NULL;
 	fprintf(stderr, "le thread %p n'existe pas\n", thread);
+	sig_unblock();
 	return -1;
     }
+    sig_unblock();
     return 0;
 }
 
@@ -348,7 +344,7 @@ static void wakeup_func(thread_t data, gpointer user_data) {
 
 
 void thread_exit(void *retval) {
-    
+    sig_block();
     thread_t head = g_list_nth_data(ready_list, 0);
 
     g_list_foreach(head->sleeping_list,
@@ -364,19 +360,18 @@ void thread_exit(void *retval) {
 
     struct itimerval new_value;
 	
-    getitimer(ITIMER_VIRTUAL,
+    getitimer(ITIMER_PROF,
 	      &new_value);
     
     if (new_value.it_value.tv_usec) {
 	new_value.it_value = new_value.it_interval;
 	
-	setitimer(ITIMER_VIRTUAL,
+	setitimer(ITIMER_PROF,
 		  &new_value,
 		  NULL);
     }
-        
+    sig_unblock();
     setcontext(&(((thread_t)g_list_nth_data(ready_list, 0))->uc));
-
     exit(0);
 }
 
@@ -470,26 +465,31 @@ void basic_sig_treatment(int sig){
 
 
 void sigvtalarm_treatment(int i){
-    //sig_block();
+    
     (void)i;
     thread_t current = g_list_nth_data(ready_list, 0);
+    struct itimerval new_value;
+    getitimer(ITIMER_PROF,
+	      &new_value);
+    
+    fprintf(stderr,"%d  %d\n",new_value.it_interval.tv_usec, new_value.it_value.tv_usec);
     
     // marche pas 
+    thread_yield();
     //thread_kill(current,SIG_YIELD);
-    //sig_unblock();
     //thread_sigTreat(current);
 }
 
 void sig_block() {
     sigset_t set;
     sigemptyset(&set);
-    sigaddset(&set, SIGVTALRM);
+    sigaddset(&set, SIGPROF);
     sigprocmask(SIG_BLOCK, &set, NULL);
 }
 void sig_unblock() {
     sigset_t set;
     sigemptyset(&set);
-    sigaddset(&set, SIGVTALRM);
+    sigaddset(&set, SIGPROF);
     sigprocmask(SIG_UNBLOCK, &set, NULL);
 }
 

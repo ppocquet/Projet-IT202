@@ -6,12 +6,15 @@
 static void * threadfunc(void * arg)
 {
     char *name = arg;
+    int i = 20;
+    while(i--) {
     fprintf(stderr, "je suis le thread %p, lancé avec l'argument %s\n",
 	    thread_self(), name);
-    thread_yield();
+    //thread_yield();
     fprintf(stderr, "je suis encore le thread %p, lancé avec l'argument %s\n",
 	    thread_self(), name);
-    thread_exit(arg);
+    }
+thread_exit(arg);
 }
 
 int main(int argc, char *argv[])
