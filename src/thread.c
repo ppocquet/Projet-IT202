@@ -131,10 +131,21 @@ thread_t thread_self(void) {
 }
 
 
+/**
+ * fonction encapsulant la fonction du threads
+ * permettant d'avoir un thread_exit qui l'utilisateur ne le fait pas
+ */
+void thread_func(void *(*func)(void *), void *funcarg) {
+    sig_unblock();
+    void *retval = func(funcarg);
+    thread_exit(retval);
+}
+
+
 
 int thread_create_with_prio(thread_t *newthread, void *(*func)(void *), void *funcarg, int prio) {
-
     sig_block();
+       
     if (ready_list == NULL){
     	thread_t main_thread;
     	main_thread=malloc(sizeof(struct thread));
@@ -161,7 +172,6 @@ int thread_create_with_prio(thread_t *newthread, void *(*func)(void *), void *fu
 		  &new_value, NULL);
 	
 	thread_initSigTab(main_thread);
-	fprintf(stderr,"init %d  %d\n",new_value.it_interval.tv_usec, new_value.it_value.tv_usec);
     }
 
     *newthread = malloc(sizeof(struct thread));
@@ -191,9 +201,8 @@ int thread_create_with_prio(thread_t *newthread, void *(*func)(void *), void *fu
 
     (*newthread)->uc.uc_link = NULL;
 
-    makecontext(&(*newthread)->uc, (void (*)(void)) func, 1, funcarg);
-    //return -1;
-
+    makecontext(&(*newthread)->uc, (void (*)(void)) thread_func, 2, func, funcarg);
+    
     thread_initSigTab(*newthread);
     ADD_THREAD(*newthread);
     
@@ -228,13 +237,11 @@ int thread_yield(void) {
 	      &new_value, NULL);
     
     
-    sig_unblock();
     ok=swapcontext(&current->uc, &next->uc);
-    sig_block();
-    //if(!ok)
-    thread_sigTreat(thread_self());
+    if(!ok)
+	thread_sigTreat(thread_self());
     sig_unblock();
-    return ok;
+    return 0;
 }
 
 int thread_join(thread_t thread, void **retval) {
@@ -273,11 +280,11 @@ int thread_join(thread_t thread, void **retval) {
 	setitimer(ITIMER_PROF,
 		  &new_value, NULL);
 
-	sig_unblock();
 	if(swapcontext(&current->uc, &next->uc) == -1) {
+	    sig_unblock();
 	    return -1;
 	}
-	sig_block();
+  
 	*retval = current->retval;
 
 	thread_sigTreat(current);
@@ -287,10 +294,7 @@ int thread_join(thread_t thread, void **retval) {
 	    /* juste avant de libérer la pile */
 	    VALGRIND_STACK_DEREGISTER(thread->stackid);
 	    free(thread->uc.uc_stack.ss_sp);
-
-
 	    free(thread);
-
 	}
 
 	thread_t cur_t =  g_list_nth_data(ready_list, 0);
@@ -299,14 +303,12 @@ int thread_join(thread_t thread, void **retval) {
 
 	    free(cur_t);
 
-
 	    new_value.it_interval.tv_sec = 0;
 	    new_value.it_interval.tv_usec = 0;
 
 	    setitimer(ITIMER_PROF,
 		      &new_value,
 		      NULL);
-
 
 	    g_list_free(ready_list);
 	    ready_list=NULL;
@@ -370,12 +372,13 @@ void thread_exit(void *retval) {
 		  &new_value,
 		  NULL);
     }
-    sig_unblock();
     setcontext(&(((thread_t)g_list_nth_data(ready_list, 0))->uc));
+    sig_unblock();
     exit(0);
 }
 
 void thread_kill(thread_t thr, int sig){
+    sig_block();
     int* new_sig;
     if(thr==NULL)
 	return;
@@ -403,10 +406,11 @@ void thread_kill(thread_t thr, int sig){
 	printf("signal ordonnanceur %d recu\n", sig);
       }
     }
-    
+    sig_unblock();
 }
 
 void thread_signal(thread_t thr, int sig, void (*sig_func)(int)){
+    sig_block();
     if(thr==NULL)
 	return;
 
@@ -414,6 +418,7 @@ void thread_signal(thread_t thr, int sig, void (*sig_func)(int)){
 	return;
 
     thr->treat_tab[sig]=sig_func;
+    sig_unblock();
 }
 
 void thread_initSigTab(thread_t thr){
@@ -465,19 +470,15 @@ void basic_sig_treatment(int sig){
 
 
 void sigvtalarm_treatment(int i){
-    
+    sig_block();
     (void)i;
     thread_t current = g_list_nth_data(ready_list, 0);
     struct itimerval new_value;
     getitimer(ITIMER_PROF,
 	      &new_value);
     
-    fprintf(stderr,"%d  %d\n",new_value.it_interval.tv_usec, new_value.it_value.tv_usec);
-    
-    // marche pas 
     thread_yield();
-    //thread_kill(current,SIG_YIELD);
-    //thread_sigTreat(current);
+    //sig_unblock(); le thread_yield le fait
 }
 
 void sig_block() {
