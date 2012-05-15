@@ -61,16 +61,23 @@ int prio_update_sorted_insert_by_end(thread_t thread) {
     if(thread == NULL)
 	return -1;
 
-    if(g_list_length(ready_list) == 0) {
+    if(ready_list == NULL) {
 	ready_list = g_list_append(ready_list, thread);
 	ready_list_end = ready_list;
+	return 0;
+    }
+    else if(ready_list == ready_list_end) {
+	ready_list = g_list_append(ready_list, thread);
+	ready_list_end = ready_list->next;
 	return 0;
     }
 
     GList *current = ready_list_end;
     while(current != ready_list) {
 	thread_t current_thread = current->data;
-	if(thread->current_prio < current_thread->current_prio) {
+	//fprintf(stderr,"%d\n", thread->current_prio);
+	if(thread->current_prio 
+	   < current_thread->current_prio) {
 	    current_thread->current_prio--;
 	    current = g_list_previous(current);
 	}
@@ -150,10 +157,12 @@ int thread_create_with_prio(thread_t *newthread, void *(*func)(void *), void *fu
     	thread_t main_thread;
     	main_thread=malloc(sizeof(struct thread));
 	main_thread->sleeping_list=NULL;
-    	//getcontext(&main_thread->uc);
+    	main_thread->basic_prio = DEFAULT_PRIO;
+	main_thread->current_prio = DEFAULT_PRIO;
+	//getcontext(&main_thread->uc);
 	ready_list = g_list_append(ready_list, main_thread);
 	ready_list_end = ready_list;
-
+	
 	struct sigaction act;
 
 	act.sa_handler = sigvtalarm_treatment;
@@ -218,9 +227,12 @@ int thread_yield(void) {
     sig_block();
     thread_t next, current = g_list_nth_data(ready_list, 0);
     int ok;
+    if(ready_list == NULL)
+	return -1;
 
     //reinitialisation de la prio
-    current->current_prio = current->basic_prio;
+    current->current_prio = 
+	current->basic_prio;
 
     ready_list = g_list_remove(ready_list, current);
 
